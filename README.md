@@ -2,16 +2,18 @@
 Ještě větší pičovina
 ## Spouštění programu
 1. V pripade OS Linux: 
-- **./sheet [-d DELIM] [Prikazy pro upravu tabulky]**
-- **./sheet [-d DELIM] [Selekce radku] [Prikaz pro zpracovani dat]**
+- **./sps [-d DELIM] CMD_SEQUENCE FILE
 2. V pripade OS Windows: 
-- **sheet.exe [-d DELIM] [Prikazy pro upravu tabulky]**
-- **sheet.exe [-d DELIM] [Selekce radku] [Prikaz pro zpracovani dat]**
+- **sps.exe [-d DELIM] CMD_SEQUENCE FILE
 
 ## Oddělovač buněk [-d DELIM]
-Argument -d specifikuje, jake znaky lze interpretovat jako oddelovace bunek.
-Ve vychozim nastaveni je DELIM retezec obsahujici mezeru.
-Prvni znak z retezce DELIM bude pouzit jako oddelovac vystupnich hodnot.
+Argument -d specifikuje, jaké znaky lze interpretovat jako oddělovače jednotlivých buněk. Každý znak ve vstupním řádku, který je obsažen v řetězci DELIM, se chová jako oddělovač dvou sousedících buněk. Ve výchozím nastavení je DELIM řetězec obsahující mezeru. Vícenásobný výskyt stejných znaků v řetězci DELIM je ignorován. První znak z řetězce DELIM bude také použit jako oddělovač výstupních hodnot. DELIM nesmí obsahovat uvozovky ani zpětné lomítko.
+
+## Příkazy CMD_SEQUENCE
+Argument CMD_SEQUENCE je jeden argument obsahující sekvenci příkazů. Více příkazů tabulkového procesoru je odděleno středníkem. Příkaz nesmí být prázdný.
+
+## Soubor FILE
+Specifikuje název souboru s tabulkou.
 
 ## Popis příkazů pro úpravu tabulky [Prikazy pro upravu tabulky]
 - irow R - vlozi radek tabulky pred radek R > 0 (insert-row).
