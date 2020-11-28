@@ -98,35 +98,29 @@ Na chyby za běhu programu reagujte obvyklým způsobem: Na neočekávaná vstup
 
 ## Progres zpracování
 ### Základní operace pro načtení a výpis 
-- [x] Načítání řádků
+- [x] Načtení souboru
 - [x] Nalezení delimu
-- [ ] Kontrola zadáného vstupu na příkazové řádce
+- [x] kontorla vstupu
 - [x] Zpracování argumentů z příkazové řádky
-- [x] Výpis řádků
-- [x] Rozdělení řádku do buněk
-- [x] Složení buněk do řádku 
+- [ ] Výpis řádků
+- [ ] Zápis do matice 
+- [ ] Realloc
 
 ### Operace pro úpravu tabulky
-- [x] irow
-- [x] arow
-- [x] drow 
-- [x] drows
-- [x] icol
-- [x] acol
-- [x] dcol
-- [x] dcols
+- [ ] irow
+- [ ] arow
+- [ ] drow 
+- [ ] drows
+- [ ] icol
+- [ ] acol
+- [ ] dcol
+- [ ] dcols
 
 ### Operace pro zpracování dat
-- [x] cset
-- [x] tolower
-- [x] toupper
-- [x] round
-- [x] int
-- [x] copy
-- [x] swap
-- [ ] move
-
-### Operace pro selekci řádku
-- [ ] rows
-- [x] beginswith
-- [x] contains
+- [ ] len
+- [ ] count
+- [ ] avg
+- [ ] sum
+- [ ] set STR
+- [ ] swap
+- [ ] clear
