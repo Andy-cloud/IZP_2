@@ -8,11 +8,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MIN_CELL 10
+
 typedef struct
 {
     int rows;
     int cols;
-    char **data;
+    char ***data;
 
 } matrix_t;
 
@@ -25,12 +27,16 @@ matrix_t mat_init()
     return tab;
 }
 
-void mat_clear(matrix_t *tab, int r)
+void mat_clear(matrix_t *tab, int r, int c)
 {
     tab->cols = 0;
     tab->rows = 0;
     for (int i = 0; i < r; i++)
     {
+        for (int j = 0; j < c; j++)
+        {
+            free(tab->data[i][j]);
+        }
         free(tab->data[i]);
         printf("Dealokace %d\n", i);
     }
@@ -40,21 +46,73 @@ void mat_clear(matrix_t *tab, int r)
 }
 void mat_alloc(matrix_t *tab)
 {
-    tab->data = malloc(tab->cols * tab->rows * sizeof(char *));
+    tab->data = malloc(tab->rows * sizeof(char *));
     if (tab->data == NULL)
     {
         printf("Malloc fail!");
         return;
     }
-    for (int i = 0; i < (tab->cols * tab->rows); i++)
+    for (int i = 0; i < tab->rows; i++)
     {
-        tab->data[i] = malloc(sizeof(char));
+        tab->data[i] = malloc(tab->cols * sizeof(char *));
         if (tab->data[i] == NULL)
         {
             printf("Malloc fail!");
-            mat_clear(tab, i);
+            mat_clear(tab, i, 0);
             return;
         }
+        for (int j = 0; j < tab->cols; j++)
+        {
+            tab->data[i][j] = calloc(MIN_CELL, sizeof(char));
+            if (tab->data[i][j] == NULL)
+            {
+                printf("Calloc fail!");
+                mat_clear(tab, i, j);
+                return;
+            }
+        }
+    }
+}
+int mat_reall(matrix_t *tab, int size, int row, int col, int type)
+{
+    if (type == 1)
+    {
+        char ***p = realloc(tab->data, sizeof(char) * size);
+        if (p == NULL)
+        {
+            printf("Realloc fail!");
+            free(p);
+            mat_clear(tab, tab->rows, tab->cols);
+            return 0;
+        }
+        tab->data = p;
+        return 1;
+    }
+    else if (type == 2)
+    {
+       char **p = realloc(tab->data[row], sizeof(char) * size);
+        if (p == NULL)
+        {
+            printf("Realloc fail!");
+            free(p);
+            mat_clear(tab, tab->rows, tab->cols);
+            return 0;
+        }
+        tab->data[row] = p;
+        return 1;  
+    }
+    else
+    {
+        char *p = realloc(tab->data[row][col], sizeof(char) * size);
+        if (p == NULL)
+        {
+            printf("Realloc fail!");
+            free(p);
+            mat_clear(tab, tab->rows, tab->cols);
+            return 0;
+        }
+        tab->data[row][col] = p;
+        return 1;
     }
 }
 
@@ -72,8 +130,7 @@ int open_file(FILE **f, const char name[], char *meth)
         return 1;
     }
 }
-
-void read_to_mat(FILE *f, matrix_t *tab, const char del[])
+void count_rows_cols(FILE *f, matrix_t *tab, const char del[])
 {
     char c;
     int cols = 0;
@@ -91,14 +148,16 @@ void read_to_mat(FILE *f, matrix_t *tab, const char del[])
             tab->cols = cols;
             cols = 0;
         }
-        for (unsigned i = 0; i < strlen(del); i++)
+        if (strchr(del, c) != NULL)
         {
-            if (del[i] == c)
-            {
-                cols += 1;
-            }
+            cols += 1;
         }
     }
+}
+void read_to_mat(FILE *f, matrix_t *tab, const char del[])
+{
+    count_rows_cols(f, tab, del);
+
     printf("Pocet sloupcu: %d\n", tab->cols);
     printf("Pocet radku: %d\n", tab->rows);
 
@@ -108,28 +167,43 @@ void read_to_mat(FILE *f, matrix_t *tab, const char del[])
 
     fseek(f, 0, SEEK_SET);
 
-    int tmp = 0;
+    int row = 0;
+    int col = 0;
     int size = 1;
     int is_delim = 0;
+    char c;
 
     while (1)
     {
         c = fgetc(f);
         if (c == '\n')
         {
-            tab->data[tmp][size-1]='\0';
-            tmp++;
+            tab->data[row][col][size - 1] = '\0';
+            row++;
+            col = 0;
             size = 1;
             is_delim = 1;
+            if (row == tab->rows)
+            {
+                break;
+            }
+            if (!mat_reall(tab, MIN_CELL, row, col, 0))
+            {
+                return;
+            }
         }
         for (unsigned i = 0; i < strlen(del); i++)
         {
             if (del[i] == c)
             {
-                tab->data[tmp][size-1]='\0';
-                tmp++;
+                tab->data[row][col][size - 1] = '\0';
+                col++;
                 size = 1;
                 is_delim = 1;
+                if (!mat_reall(tab, MIN_CELL, row, col, 0))
+                {
+                    return;
+                }
                 break;
             }
             else
@@ -147,31 +221,68 @@ void read_to_mat(FILE *f, matrix_t *tab, const char del[])
             if (c != '\n')
             {
 
-                tab->data[tmp][size - 1] = c;
+                tab->data[row][col][size - 1] = c;
                 size++;
-                char *p = realloc(tab->data[tmp], size * sizeof(char));
-                if (p == NULL)
+                if (size > MIN_CELL)
                 {
-                    printf("Realloc fail!");
-                    free(p);
-                    free(tab->data);
-                    return;
+                    if (!mat_reall(tab, size, row, col, 0))
+                    {
+                        return;
+                    }
                 }
-                tab->data[tmp] = p;
             }
         }
     }
-    for (int i = 0; i < tmp; i++)
+}
+/*void mat_add_row(matrix_t *tab, int r)
+{
+    int real = 0;
+    int i;
+    real = mat_reall(tab, tab->rows + 1, 0, 0, 1);
+    if (real)
     {
-
-        printf("%s ", tab->data[i]);
+        tab->rows += 1;
+        for (i = tab->rows - 1; i >= r; i--)
+        {
+            tab->data[i] = tab->data[i - 1]; //FIXME
+        }
+        tab->data[i] = malloc(tab->cols * sizeof(char *));
+        if (tab->data[i] == NULL)
+        {
+            printf("Malloc fail!");
+            mat_clear(tab, i, 0);
+            return;
+        }
+        for (int j = 0; j < tab->cols; j++)
+        {
+            tab->data[i][j] = calloc(MIN_CELL, sizeof(char));
+            if (tab->data[i][j] == NULL)
+            {
+                printf("Calloc fail!");
+                mat_clear(tab, i, j);
+                return;
+            }
+        }
     }
 }
-
+void mat_add_col()
+{
+}*/
 void close_file(FILE *f)
 {
     printf("Soubor zavren!\n");
     fclose(f);
+}
+void mat_print(matrix_t *t)
+{
+    for (int i = 0; i < t->rows; i++)
+    {
+        for (int j = 0; j < t->cols; j++)
+        {
+            printf("%s ", t->data[i][j]);
+        }
+        printf("\n");
+    }
 }
 
 int main(int argc, char const **argv)
@@ -182,33 +293,27 @@ int main(int argc, char const **argv)
         FILE *f;
         matrix_t tab;
         tab = mat_init();
-        if ((strcmp(argv[1], "-d")) && (argc == 3))
+        if (open_file(&f, argv[argc - 1], "r"))
         {
-            const char *del = " ";
-            if (open_file(&f, argv[argc - 1], "r"))
+            if ((strcmp(argv[1], "-d")) && (argc == 3))
             {
+                const char *del = " ";
                 read_to_mat(f, &tab, del);
-                mat_clear(&tab, tab.rows);
-                close_file(f);
             }
-            else
+            if ((!strcmp(argv[1], "-d")) && (argc == 5))
             {
-                return 1;
+                const char *del = argv[2];
+                read_to_mat(f, &tab, del);
             }
+            mat_print(&tab);
+            // mat_add_row(&tab, 6);
+            mat_print(&tab);
+            mat_clear(&tab, tab.rows, tab.cols);
+            close_file(f);
         }
-        if ((!strcmp(argv[1], "-d")) && (argc == 5))
+        else
         {
-            const char *del = argv[2];
-            if (open_file(&f, argv[argc - 1], "r"))
-            {
-                read_to_mat(f, &tab, del);
-                mat_clear(&tab, tab.rows);
-                close_file(f);
-            }
-            else
-            {
-                return 1;
-            }
+            return 1;
         }
     }
     if (opened)
