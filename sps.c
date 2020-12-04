@@ -63,57 +63,29 @@ void mat_alloc(matrix_t *tab)
         }
         for (int j = 0; j < tab->cols; j++)
         {
-            tab->data[i][j] = calloc(MIN_CELL, sizeof(char));
+            tab->data[i][j] = calloc(1, sizeof(char) * MIN_CELL);
             if (tab->data[i][j] == NULL)
             {
                 printf("Calloc fail!");
                 mat_clear(tab, i, j);
                 return;
             }
+            printf("Alokace se provedla %d %d\n", i, j);
         }
     }
 }
-int mat_reall(matrix_t *tab, int size, int row, int col, int type)
+int mat_reall(matrix_t *tab, int size, int row, int col)
 {
-    if (type == 1)
+
+    char *p = realloc(tab->data[row][col], sizeof(char) * size);
+    if (p == NULL)
     {
-        char ***p = realloc(tab->data, sizeof(char) * size);
-        if (p == NULL)
-        {
-            printf("Realloc fail!");
-            free(p);
-            mat_clear(tab, tab->rows, tab->cols);
-            return 0;
-        }
-        tab->data = p;
-        return 1;
+        printf("Realloc fail!");
+        mat_clear(tab, tab->rows, tab->cols);
+        return 0;
     }
-    else if (type == 2)
-    {
-       char **p = realloc(tab->data[row], sizeof(char) * size);
-        if (p == NULL)
-        {
-            printf("Realloc fail!");
-            free(p);
-            mat_clear(tab, tab->rows, tab->cols);
-            return 0;
-        }
-        tab->data[row] = p;
-        return 1;  
-    }
-    else
-    {
-        char *p = realloc(tab->data[row][col], sizeof(char) * size);
-        if (p == NULL)
-        {
-            printf("Realloc fail!");
-            free(p);
-            mat_clear(tab, tab->rows, tab->cols);
-            return 0;
-        }
-        tab->data[row][col] = p;
-        return 1;
-    }
+    tab->data[row][col] = p;
+    return 1;
 }
 
 int open_file(FILE **f, const char name[], char *meth)
@@ -134,23 +106,19 @@ void count_rows_cols(FILE *f, matrix_t *tab, const char del[])
 {
     char c;
     int cols = 0;
-    while (1)
+    while ((c = fgetc(f)) != EOF)
     {
-        c = fgetc(f);
-        if (feof(f))
-        {
-            tab->cols += 1;
-            break;
-        }
         if (c == '\n')
         {
-            tab->rows += 1;
-            tab->cols = cols;
+            tab->rows++;
+            tab->cols = cols + 1;
             cols = 0;
         }
+
         if (strchr(del, c) != NULL)
         {
-            cols += 1;
+            //počet nalezených znaků delim
+            cols++;
         }
     }
 }
@@ -169,25 +137,25 @@ void read_to_mat(FILE *f, matrix_t *tab, const char del[])
 
     int row = 0;
     int col = 0;
-    int size = 1;
+    int size = 0;
     int is_delim = 0;
     char c;
 
-    while (1)
+    while ((c = fgetc(f)) != EOF)
     {
-        c = fgetc(f);
+
         if (c == '\n')
         {
-            tab->data[row][col][size - 1] = '\0';
+            tab->data[row][col][size] = '\0';
             row++;
             col = 0;
-            size = 1;
+            size = 0;
             is_delim = 1;
             if (row == tab->rows)
             {
                 break;
             }
-            if (!mat_reall(tab, MIN_CELL, row, col, 0))
+            if (!mat_reall(tab, MIN_CELL, row, col))
             {
                 return;
             }
@@ -196,11 +164,11 @@ void read_to_mat(FILE *f, matrix_t *tab, const char del[])
         {
             if (del[i] == c)
             {
-                tab->data[row][col][size - 1] = '\0';
+                tab->data[row][col][size] = '\0';
                 col++;
-                size = 1;
+                size = 0;
                 is_delim = 1;
-                if (!mat_reall(tab, MIN_CELL, row, col, 0))
+                if (!mat_reall(tab, MIN_CELL, row, col))
                 {
                     return;
                 }
@@ -211,21 +179,17 @@ void read_to_mat(FILE *f, matrix_t *tab, const char del[])
                 is_delim = 0;
             }
         }
-        if (feof(f))
-        {
-            break;
-        }
 
         if (!is_delim)
         {
             if (c != '\n')
             {
 
-                tab->data[row][col][size - 1] = c;
+                tab->data[row][col][size] = c;
                 size++;
-                if (size > MIN_CELL)
+                if (size >= MIN_CELL)
                 {
-                    if (!mat_reall(tab, size, row, col, 0))
+                    if (!mat_reall(tab, size + 1, row, col))
                     {
                         return;
                     }
@@ -234,40 +198,93 @@ void read_to_mat(FILE *f, matrix_t *tab, const char del[])
         }
     }
 }
-/*void mat_add_row(matrix_t *tab, int r)
+void mat_add_row(matrix_t *tab, int where)
 {
-    int real = 0;
-    int i;
-    real = mat_reall(tab, tab->rows + 1, 0, 0, 1);
-    if (real)
+    char ***p_row;
+    char **p_col;
+    char *p_cell;
+    tab->rows += 1;
+    where -= 1; // vloží řádek před určitý řádek
+    //rozšíření pole s řádky
+    p_row = realloc(tab->data, sizeof(char *) * tab->rows);
+    if (p_row == NULL)
     {
-        tab->rows += 1;
-        for (i = tab->rows - 1; i >= r; i--)
+        printf("Realloc fail!");
+        mat_clear(tab, tab->rows, tab->cols);
+        return;
+    }
+    else
+        tab->data = p_row;
+    //posunutí prvků pro vložení nového řádku na určité místo
+    for (int i = tab->rows - 1; i > where; i--)
+    {
+        tab->data[i] = tab->data[i - 1];
+    }
+    //alokace pole sloupců pro nový řádek
+    p_col = malloc(sizeof(char *) * tab->cols);
+    if (p_col == NULL)
+    {
+        printf("Malloc fail!");
+        mat_clear(tab, tab->rows, tab->cols);
+        return;
+    }
+    else
+        tab->data[where] = p_col;
+
+    //alokoce nových stringů
+    for (int j = 0; j < tab->cols; j++)
+    {
+
+        p_cell = calloc(1, MIN_CELL);
+        if (p_cell == NULL)
         {
-            tab->data[i] = tab->data[i - 1]; //FIXME
-        }
-        tab->data[i] = malloc(tab->cols * sizeof(char *));
-        if (tab->data[i] == NULL)
-        {
-            printf("Malloc fail!");
-            mat_clear(tab, i, 0);
+            printf("Calloc fail!");
+            mat_clear(tab, tab->rows, tab->cols);
             return;
         }
-        for (int j = 0; j < tab->cols; j++)
-        {
-            tab->data[i][j] = calloc(MIN_CELL, sizeof(char));
-            if (tab->data[i][j] == NULL)
-            {
-                printf("Calloc fail!");
-                mat_clear(tab, i, j);
-                return;
-            }
-        }
+        else
+            tab->data[where][j] = p_cell;
     }
 }
-void mat_add_col()
+
+void mat_add_col(matrix_t *tab, int where)
 {
-}*/
+    char **p_col;
+    char *p_cell;
+
+    tab->cols += 1;
+    where -= 1;
+
+    for (int i = 0; i < tab->rows; i++)
+    {
+        p_col = realloc(tab->data[i], tab->cols * sizeof(char *));
+        if (p_col == NULL)
+        {
+            printf("Realloc fail!");
+            mat_clear(tab, tab->rows, tab->cols);
+            return;
+        }
+        else
+        {
+            tab->data[i] = p_col;
+        }
+        for (int j = tab->cols - 1; j > where; j--)
+        {
+            tab->data[i][j] = tab->data[i][j - 1];
+        }
+        p_cell = calloc(1, MIN_CELL);
+        if (p_cell == NULL)
+        {
+            printf("Realloc fail!");
+            mat_clear(tab, tab->rows, tab->cols);
+            return;
+        } else
+        {
+            tab->data[i][where]=p_cell;
+        }
+        
+    }
+}
 void close_file(FILE *f)
 {
     printf("Soubor zavren!\n");
@@ -287,7 +304,6 @@ void mat_print(matrix_t *t)
 
 int main(int argc, char const **argv)
 {
-    int opened = 0;
     if (argc > 2)
     {
         FILE *f;
@@ -305,8 +321,8 @@ int main(int argc, char const **argv)
                 const char *del = argv[2];
                 read_to_mat(f, &tab, del);
             }
-            mat_print(&tab);
-            // mat_add_row(&tab, 6);
+            mat_add_row(&tab, 1);
+            mat_add_col(&tab,2);
             mat_print(&tab);
             mat_clear(&tab, tab.rows, tab.cols);
             close_file(f);
@@ -315,10 +331,6 @@ int main(int argc, char const **argv)
         {
             return 1;
         }
-    }
-    if (opened)
-    {
-        /* code */
     }
 
     return 0;
