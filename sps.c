@@ -58,11 +58,11 @@ void mat_clear(matrix_t *tab, int r, int c)
             free(tab->data[i][j]);
         }
         free(tab->data[i]);
-        printf("Dealokace %d\n", i);
+        //printf("Dealokace %d\n", i);
     }
 
     free(tab->data);
-    printf("Dealokace tabulky\n");
+    //printf("Dealokace tabulky\n");
 }
 void mat_alloc(matrix_t *tab)
 {
@@ -90,7 +90,7 @@ void mat_alloc(matrix_t *tab)
                 mat_clear(tab, i, j);
                 return;
             }
-            printf("Alokace se provedla %d %d\n", i, j);
+            //printf("Alokace se provedla %d %d\n", i, j);
         }
     }
 }
@@ -151,7 +151,7 @@ void read_to_mat(FILE *f, matrix_t *tab, const char del[])
 
     mat_alloc(tab);
 
-    printf("Alokace se provedla\n");
+    //printf("Alokace se provedla\n");
 
     fseek(f, 0, SEEK_SET);
 
